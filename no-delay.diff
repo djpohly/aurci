@@ -1,0 +1,29 @@
+diff -Nur xscreensaver-5.22.orig/driver/windows.c xscreensaver-5.22/driver/windows.c
+--- xscreensaver-5.22.orig/driver/windows.c	2012-06-18 02:27:51.000000000 -0400
++++ xscreensaver-5.22/driver/windows.c	2013-08-17 03:57:33.932074231 -0400
+@@ -38,6 +38,7 @@
+ #include <signal.h>		/* for the signal names */
+ #include <time.h>
+ #include <sys/time.h>
++#include "usleep.h"
+ 
+ /* You might think that to store an array of 32-bit quantities onto a
+    server-side property, you would pass an array of 32-bit data quantities
+@@ -253,7 +254,7 @@
+         break;
+ 
+       /* else, wait a second and try to grab again. */
+-      sleep (1);
++      usleep (100000);
+     }
+ 
+   if (kstatus != GrabSuccess)
+@@ -277,7 +278,7 @@
+         break;
+ 
+       /* else, wait a second and try to grab again. */
+-      sleep (1);
++      usleep (100000);
+     }
+ 
+   if (mstatus != GrabSuccess)

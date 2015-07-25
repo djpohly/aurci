@@ -12,10 +12,12 @@ depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww')
 makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
+        no-delay.diff
         xscreensaver-add-electricsheep.diff
 	xscreensaver-missingescape.patch
 	LICENSE)
 sha1sums=('99f69ff0bef5e13ab0c84dcb1312605db485bafd'
+          'bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
           'e8dc57b6471fb3867ee099304ac6bf628351cb98'
           'ab2962f497e0b50a2ffe135baefdc155b0be1413'
           '3eedb8b91b13c29df9b1fe5cbb027e1470b802d2')
@@ -24,6 +26,7 @@ prepare() {
   cd ${pkgname}-${pkgver}
   patch -p0 -i "${srcdir}/xscreensaver-add-electricsheep.diff"
   patch -p1 -i "${srcdir}/xscreensaver-missingescape.patch"
+  patch -Np1 -i "${srcdir}/no-delay.diff"
 }
 
 build() {
