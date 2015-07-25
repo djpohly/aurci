@@ -1,0 +1,600 @@
+diff -Nur xscreensaver-5.22.orig/driver/XScreenSaver.ad.in xscreensaver-5.22/driver/XScreenSaver.ad.in
+--- xscreensaver-5.22.orig/driver/XScreenSaver.ad.in	2013-07-16 05:18:50.000000000 -0400
++++ xscreensaver-5.22/driver/XScreenSaver.ad.in	2013-08-18 17:29:20.066658486 -0400
+@@ -159,6 +159,7 @@
+ 				maze -root				    \n\
+ @GL_KLUDGE@ GL: 				superquadrics -root			    \n\
+ 				attraction -root			    \n\
++				adstarry -root				    \n\
+ 				blitspin -root				    \n\
+ 				greynetic -root				    \n\
+ 				helix -root				    \n\
+diff -Nur xscreensaver-5.22.orig/hacks/Makefile.in xscreensaver-5.22/hacks/Makefile.in
+--- xscreensaver-5.22.orig/hacks/Makefile.in	2013-07-16 05:23:32.000000000 -0400
++++ xscreensaver-5.22/hacks/Makefile.in	2013-08-18 17:27:46.093326215 -0400
+@@ -86,6 +86,7 @@
+ 		  $(UTILS_SRC)/textclient.o
+ 
+ SRCS		= attraction.c blitspin.c bouboule.c braid.c bubbles.c \
++		  adstarry.c \
+ 		  bubbles-default.c decayscreen.c deco.c drift.c flag.c \
+ 		  flame.c forest.c vines.c galaxy.c grav.c greynetic.c \
+ 		  halo.c helix.c hopalong.c hypercube.c ifs.c imsmap.c \
+@@ -125,6 +126,7 @@
+ 		  xmountains xplanet xsnow
+ 
+ OBJS		= attraction.o blitspin.o bouboule.o braid.o bubbles.o \
++		  adstarry.o \
+ 		  bubbles-default.o decayscreen.o deco.o drift.o flag.o \
+ 		  flame.o forest.o vines.o galaxy.o grav.o greynetic.o \
+ 		  halo.o helix.o hopalong.o hypercube.o ifs.o imsmap.o \
+@@ -156,6 +158,7 @@
+ 		  lcdscrub.o hexadrop.o
+ 
+ EXES		= attraction blitspin bouboule braid decayscreen deco \
++		  adstarry \
+ 		  drift flame galaxy grav greynetic halo \
+ 		  helix hopalong ifs imsmap julia kaleidescope \
+ 		  maze moire noseguy pedal \
+@@ -571,6 +574,9 @@
+ deco:		deco.o		$(HACK_OBJS) $(COL)
+ 	$(CC_HACK) -o $@ $@.o	$(HACK_OBJS) $(COL) $(HACK_LIBS)
+ 
++adstarry:	adstarry.o	$(HACK_OBJS) $(XPM)
++	$(CC_HACK) -o $@ $@.o	$(HACK_OBJS) $(XPM) $(XPM_LIBS)
++
+ flame:		flame.o		$(HACK_OBJS) $(COL)
+ 	$(CC_HACK) -o $@ $@.o	$(HACK_OBJS) $(COL) $(HACK_LIBS)
+ 
+diff -Nur xscreensaver-5.22.orig/hacks/adstarry.c xscreensaver-5.22/hacks/adstarry.c
+--- xscreensaver-5.22.orig/hacks/adstarry.c	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/adstarry.c	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,368 @@
++/* Starry Night by Craig Dickson, Copyright (c) 1990-1994 Berkeley Systems Inc.
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is so totally not granted.
++ */
++
++#include "screenhack.h"
++#include "xpm-pixmap.h"
++
++#include <stdlib.h>
++#include <sys/time.h>
++
++
++#ifdef HAVE_COCOA
++#	define HAVE_XPM
++#else
++#	define DO_XBM
++#endif
++
++#if defined(HAVE_GDK_PIXBUF) || defined(HAVE_XPM)
++#	include "images/meteor-l.xpm"
++#	include "images/meteor-r.xpm"
++#	include "images/flasher.xpm"
++#endif
++
++#ifdef DO_XBM
++#	include "images/meteor-l.xbm"
++#	include "images/meteor-r.xbm"
++#	include "images/flasher.xbm"
++#endif
++
++
++#define BOUND(a, x, b) MIN(MAX((a),(x)),(b))
++
++static inline int
++MOD(int a, int b)
++{
++	return b ? (a % b) : 0;
++}
++
++static inline int
++MIN(int a, int b)
++{
++	return (a < b) ? a : b;
++}
++
++static inline int
++MAX(int a, int b)
++{
++	return (a > b) ? a : b;
++}
++
++
++struct state {
++	XWindowAttributes wa;
++	GC gc;
++
++	int numBuildings;
++	int bldgHeight;
++	Bool flasher;
++
++	unsigned long lastFlash;
++
++	Pixmap meteorPM[2];
++	int meteorW, meteorH;
++	int meteorX, meteorY;
++	Pixmap flasherPM;
++	int flasherW, flasherH;
++	int flasherX, flasherY;
++
++	int *bldgTop, *bldgLeft, *bldgRight, *bldgPat;
++	/*
++	XColor colors[255];
++	int ncolors;
++	int max_depth;
++	int min_height;
++	int min_width;
++	int line_width;
++	int old_line_width;
++	Bool goldenRatio;
++	Bool mondrian;
++	Bool smoothColors;
++
++	int delay;
++	GC fgc, bgc;
++	int current_color;
++	*/
++};
++
++
++static unsigned char patterns[][8] = {
++	{0x00, 0x00, 0x00, 0x66, 0x66, 0x00, 0x00, 0x00},
++	{0x00, 0x00, 0x44, 0x44, 0x00, 0x00, 0x44, 0x44},
++	{0x88, 0x88, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
++	{0xc6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc6},
++	{0x00, 0x00, 0x54, 0x54, 0x54, 0x00, 0x00, 0x00},
++	{0x00, 0x00, 0x00, 0x48, 0x48, 0x48, 0x48, 0x00},
++	{0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00},
++	{0x01, 0x01, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00},
++};
++
++
++static void
++load_pixmaps(Display *dpy, Window win, struct state *s)
++{
++#if defined(HAVE_GDK_PIXBUF) || defined(HAVE_XPM)
++	if (s->wa.depth > 1) {
++		s->meteorPM[0] = xpm_data_to_pixmap(dpy, win, meteor_l,
++				&s->meteorW, &s->meteorH, 0);
++		s->meteorPM[1] = xpm_data_to_pixmap(dpy, win, meteor_r,
++				&s->meteorW, &s->meteorH, 0);
++		s->flasherPM = xpm_data_to_pixmap(dpy, win, flasher_xpm,
++				&s->flasherW, &s->flasherH, 0);
++	} else
++#endif
++	{
++#ifdef DO_XBM
++		unsigned long fg, bg;
++		s->meteorW = meteor_r_width;
++		s->meteorH = meteor_r_height;
++		fg = WhitePixel(dpy, DefaultScreen(dpy));
++		bg = BlackPixel(dpy, DefaultScreen(dpy));
++		s->meteorPM[0] = XCreatePixmapFromBitmapData(dpy, win,
++				(char *) meteor_l_bits, meteor_l_width,
++				meteor_l_height, bg, fg, s->wa.depth);
++		s->meteorPM[1] = XCreatePixmapFromBitmapData(dpy, win,
++				(char *) meteor_r_bits, meteor_r_width,
++				meteor_r_height, bg, fg, s->wa.depth);
++		s->flasherPM = XCreatePixmapFromBitmapData(dpy, win,
++				(char *) flasher_bits, flasher_width,
++				flasher_height, bg, fg, s->wa.depth);
++#endif
++	}
++}
++
++static int
++weighted_random(int max)
++{
++	return max ? MIN(random() % max, random() % max) : 0;
++}
++
++static int
++find_bldg(struct state *s, int x, int y)
++{
++	int b;
++
++	for (b = 0; b < s->numBuildings; b++)
++		if (x >= s->bldgLeft[b] && x <= s->bldgRight[b] &&
++				y >= s->bldgTop[b])
++			return b;
++	return -1;
++}
++
++static void
++draw_star(Display *dpy, Window win, struct state *s)
++{
++	unsigned long color;
++	int x, y;
++
++	x = MOD(random(), s->wa.width);
++	y = weighted_random(s->wa.height);
++
++	if (find_bldg(s, x, y) != -1)
++		return;
++	color  = (random() % 256) << 16;
++	color |= (random() % 256) << 8;
++	color |= (random() % 256);
++	XSetForeground(dpy, s->gc, color);
++	XDrawPoint(dpy, win, s->gc, x, y);
++}
++
++static void
++draw_bldg_px(Display *dpy, Window win, struct state *s,
++		int x, int y, int bldg)
++{
++	unsigned char pat_byte;
++	int brightness, subx, suby;
++	unsigned long color;
++
++	if (s->bldgLeft[bldg] > x || s->bldgRight[bldg] < x ||
++			s->bldgTop[bldg] > y)
++		return;
++
++	brightness = 255 - 192 / s->numBuildings * bldg;
++	subx = (x + s->bldgLeft[bldg]) & 7;
++	suby = (y + s->bldgTop[bldg]) & 7;
++	pat_byte = patterns[s->bldgPat[bldg]][suby];
++	if (!((pat_byte >> subx) & 1))
++		return;
++	color = brightness << 16 | brightness << 8;
++	XSetForeground(dpy, s->gc, color);
++	XDrawPoint(dpy, win, s->gc, x, y);
++}
++
++static void
++draw_bldg_block(Display *dpy, Window win, struct state *s)
++{
++	int x, y, dx, dy;
++	int bldg;
++
++	x = MOD(random(), s->wa.width);
++	y = MOD(random(), s->wa.height);
++	bldg = find_bldg(s, x, y);
++	if (bldg == -1)
++		return;
++	for (dy = -1; dy < 2; dy++)
++		for (dx = -1; dx < 2; dx++)
++			draw_bldg_px(dpy, win, s, x + dx, y + dy, bldg);
++}
++
++static void
++update_flasher(Display *dpy, Window win, struct state *s)
++{
++	struct timeval t;
++	long ms;
++
++	if (!s->flasher)
++		return;
++
++	gettimeofday(&t, NULL);
++	ms = t.tv_sec * 1000 + t.tv_usec / 1000;
++	if (ms - s->lastFlash <= 750)
++		return;
++
++	s->lastFlash = ms;
++	XCopyArea(dpy, s->flasherPM, win, s->gc, 0, 0, s->flasherW, s->flasherH,
++			s->flasherX, s->flasherY);
++}
++
++static void
++update_meteor(Display *bpy, Window win, struct state *s)
++{
++}
++
++static void
++init_bldgs(struct state *s)
++{
++	int i, maxHeight;
++	int width, center;
++
++	s->bldgTop = realloc(s->bldgTop, s->numBuildings * sizeof *s->bldgTop);
++	s->bldgLeft = realloc(s->bldgLeft, s->numBuildings * sizeof *s->bldgLeft);
++	s->bldgRight = realloc(s->bldgRight, s->numBuildings * sizeof *s->bldgRight);
++	s->bldgPat = realloc(s->bldgPat, s->numBuildings * sizeof *s->bldgPat);
++
++	maxHeight = MAX(20, s->wa.height * s->bldgHeight / 100);
++
++	s->flasherX = 0;
++	s->flasherY = s->wa.height;
++
++	for (i = 0; i < s->numBuildings; i++) {
++		s->bldgPat[i] = random() & 7;
++		s->bldgTop[i] = s->wa.height - random() % maxHeight;
++
++		center = MOD(random(), s->wa.width);
++
++		if (s->bldgTop[i] - 4 < s->flasherY) {
++			s->flasherY = s->bldgTop[i] - 4;
++			s->flasherX = center - 2;
++		}
++
++		width = weighted_random(s->bldgTop[i] / 8);
++		width += s->bldgTop[i] / 16 + 8;
++		width = MAX(16, width);
++		s->bldgLeft[i] = center - width / 2;
++		s->bldgRight[i] = s->bldgLeft[i] + width;
++	}
++}
++
++static void *
++starry_init(Display *dpy, Window win)
++{
++	struct state *s = calloc(1, sizeof *s);
++	XGCValues gcv;
++
++	/* get configurables */
++	s->numBuildings = get_integer_resource(dpy, "numBuildings", "Integer");
++	s->bldgHeight = get_integer_resource(dpy, "bldgHeight", "Integer");
++	s->flasher = get_boolean_resource(dpy, "flasher", "Boolean");
++
++	XGetWindowAttributes(dpy, win, &s->wa);
++
++	/* set up buildings */
++	init_bldgs(s);
++
++	/* load meteor images */
++	load_pixmaps(dpy, win, s);
++
++	/* init colors?? */
++
++	/* set up GC */
++	gcv.function = GXxor;
++	gcv.foreground = WhitePixel(dpy, DefaultScreen(dpy));
++	gcv.background = BlackPixel(dpy, DefaultScreen(dpy));
++	s->gc = XCreateGC(dpy, win,
++			GCFunction | GCForeground | GCBackground, &gcv);
++
++	return s;
++}
++
++static unsigned long
++starry_draw(Display *dpy, Window win, void *state)
++{
++	struct state *s = (struct state *) state;
++	int i;
++	int x, y;
++
++	draw_star(dpy, win, s);
++	XSetForeground(dpy, s->gc, 0);
++	for (i = 0; i < 50; i++) {
++		x = MOD(random(), s->wa.width);
++		y = weighted_random(s->wa.height);
++		XDrawPoint(dpy, win, s->gc, x, y);
++	}
++	for (i = 0; i < 30; i++) {
++		x = MOD(random(), s->wa.width);
++		y = MOD(random(), s->wa.height);
++		XDrawPoint(dpy, win, s->gc, x, y);
++	}
++	for (i = 0; i < 15; i++)
++		draw_bldg_block(dpy, win, s);
++	update_flasher(dpy, win, s);
++	update_meteor(dpy, win, s);
++	return 10000;
++}
++
++static void
++starry_reshape(Display *dpy, Window win, void *state,
++		unsigned int w, unsigned int h)
++{
++	struct state *s = (struct state *) state;
++	s->wa.width = w;
++	s->wa.height = h;
++}
++
++static Bool
++starry_event(Display *dpy, Window win, void *state, XEvent *event)
++{
++	return False;
++}
++
++static void
++starry_free(Display *dpy, Window win, void *state)
++{
++	struct state *s = state;
++	free(s->bldgPat);
++	free(s->bldgRight);
++	free(s->bldgLeft);
++	free(s->bldgTop);
++	free(s);
++}
++
++static const char *starry_defaults [] = {
++	"*numBuildings:		27",
++	"*bldgHeight:		34",
++	"*flasher:		True",
++	0
++};
++
++static XrmOptionDescRec starry_options [] = {
++	{ "-num-buildings", ".numBuildings", XrmoptionSepArg, 0 },
++	{ "-bldg-height", ".bldgHeight", XrmoptionSepArg, 0 },
++	{ "-flasher", ".flasher", XrmoptionNoArg, "True" },
++	{ "-no-flasher", ".flasher", XrmoptionNoArg, "False" },
++	{ 0, 0, 0, 0 }
++};
++
++XSCREENSAVER_MODULE("StarryNight", starry)
+diff -Nur xscreensaver-5.22.orig/hacks/config/adstarry.xml xscreensaver-5.22/hacks/config/adstarry.xml
+--- xscreensaver-5.22.orig/hacks/config/adstarry.xml	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/config/adstarry.xml	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,27 @@
++<?xml version="1.0" encoding="ISO-8859-1"?>
++
++<screensaver name="adstarry" _label="StarryNight">
++
++  <command arg="-root"/>
++
++  <number id="numBuildings" type="slider" arg="-num-buildings %"
++          _label="Buildings" _low-label="0" _high-label="100"
++          low="0" high="100" default="27"/>
++
++  <number id="bldgHeight" type="slider" arg="-bldg-height %"
++            _label="Bldg Height" _low-label="5%" _high-label="95%"
++            low="5" high="95" default="34"/>
++
++  <boolean id="flasher" _label="Flasher" arg-unset="-no-flasher"/>
++
++  <_description>
++STARRY NIGHT
++
++Original concept by James J. Eastman
++
++The number of buildings can be varied from 0 to 100.  The maximum height
++of the buildings can be varied from 5% to 95% of the monitor height.  The
++'flasher' is a flashing red light which, if enabled, will appear atop the
++tallest building.
++  </_description>
++</screensaver>
+diff -Nur xscreensaver-5.22.orig/hacks/images/flasher.xbm xscreensaver-5.22/hacks/images/flasher.xbm
+--- xscreensaver-5.22.orig/hacks/images/flasher.xbm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/flasher.xbm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,4 @@
++#define flasher_width 4
++#define flasher_height 4
++static unsigned char flasher_bits[] = {
++   0x09, 0x00, 0x00, 0x09 };
+diff -Nur xscreensaver-5.22.orig/hacks/images/flasher.xpm xscreensaver-5.22/hacks/images/flasher.xpm
+--- xscreensaver-5.22.orig/hacks/images/flasher.xpm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/flasher.xpm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,9 @@
++/* XPM */
++static char * flasher_xpm[] = {
++"4 4 2 1",
++" 	c #000000",
++".	c #800000",
++" .. ",
++"....",
++"....",
++" .. "};
+diff -Nur xscreensaver-5.22.orig/hacks/images/meteor-l.xbm xscreensaver-5.22/hacks/images/meteor-l.xbm
+--- xscreensaver-5.22.orig/hacks/images/meteor-l.xbm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/meteor-l.xbm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,14 @@
++#define meteor_l_width 32
++#define meteor_l_height 32
++static unsigned char meteor_l_bits[] = {
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF7, 
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xFF, 0x5F, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xDF, 0xFF, 
++  0xFF, 0xFF, 0x6D, 0xFF, 0xFF, 0xFF, 0xDB, 0xFF, 0xFF, 0x7F, 0xFB, 0xFF, 
++  0xFF, 0xFF, 0xFA, 0xFF, 0xFF, 0x5F, 0xFC, 0xFF, 0xFF, 0x77, 0xFF, 0xFF, 
++  0xFF, 0x9F, 0xFB, 0xFF, 0x7F, 0x4E, 0xFE, 0xFF, 0xBF, 0xCF, 0xFF, 0xFF, 
++  0xFF, 0xF1, 0xFF, 0xFF, 0xDF, 0xD9, 0xFF, 0xFF, 0x5F, 0xB8, 0xFF, 0xFF, 
++  0x5F, 0xFC, 0xFF, 0xFF, 0xBF, 0xD7, 0xFF, 0xFF, 0x7F, 0xF5, 0xFF, 0xFF, 
++  0xBF, 0xFA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, };
+diff -Nur xscreensaver-5.22.orig/hacks/images/meteor-l.xpm xscreensaver-5.22/hacks/images/meteor-l.xpm
+--- xscreensaver-5.22.orig/hacks/images/meteor-l.xpm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/meteor-l.xpm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,42 @@
++/* XPM */
++static char *meteor_l[] = {
++/* columns rows colors chars-per-pixel */
++"32 32 4 1 ",
++"  c black",
++". c #BF0000",
++"% c red",
++"* c yellow",
++/* pixels */
++"                                ",
++"                                ",
++"                                ",
++"                             .  ",
++"                           ..   ",
++"                          ...   ",
++"                        ....    ",
++"                       ..%.     ",
++"                      .....     ",
++"                    ...%..      ",
++"                   ......       ",
++"                  ...%..        ",
++"                ....*...        ",
++"               ...%%...         ",
++"              ...%*%..          ",
++"             ...%%%..           ",
++"            ..%%*%...           ",
++"           ..%%*%...            ",
++"        ....%%*%%..             ",
++"      ......**%%..              ",
++"     ...%%%%%*%..               ",
++"     ..%%%%*%...                ",
++"    .*%%%**%%..                 ",
++"    .%%%***%%..                 ",
++"    .*%%%*%%%..                 ",
++"     .*%%%%%..                  ",
++"     .%*%%%...                  ",
++"      ..*%*..                   ",
++"        ...                     ",
++"                                ",
++"                                ",
++"                                "
++};
+diff -Nur xscreensaver-5.22.orig/hacks/images/meteor-r.xbm xscreensaver-5.22/hacks/images/meteor-r.xbm
+--- xscreensaver-5.22.orig/hacks/images/meteor-r.xbm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/meteor-r.xbm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,14 @@
++#define meteor_r_width 32
++#define meteor_r_height 32
++static unsigned char meteor_r_bits[] = {
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xEF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD, 0xFF, 0xFF, 
++  0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xF6, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xB7, 0xFF, 0xFF, 0xFF, 0xD9, 0xFF, 0xFF, 0xFF, 0xDF, 0xFE, 0xFF, 
++  0xFF, 0x5F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFD, 0xFF, 0xFF, 0xBF, 0xFA, 0xFF, 
++  0xFF, 0x9F, 0xAC, 0xFF, 0xFF, 0xFF, 0xF3, 0xFF, 0xFF, 0xFF, 0x9B, 0xFF, 
++  0xFF, 0xFF, 0xE5, 0xFA, 0xFF, 0xFF, 0x9F, 0xFB, 0xFF, 0xFF, 0x0B, 0xFD, 
++  0xFF, 0xFF, 0x1D, 0xFB, 0xFF, 0xFF, 0xF7, 0xFC, 0xFF, 0xFF, 0x9F, 0xFE, 
++  0xFF, 0xFF, 0x5F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
++  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, };
+diff -Nur xscreensaver-5.22.orig/hacks/images/meteor-r.xpm xscreensaver-5.22/hacks/images/meteor-r.xpm
+--- xscreensaver-5.22.orig/hacks/images/meteor-r.xpm	1969-12-31 19:00:00.000000000 -0500
++++ xscreensaver-5.22/hacks/images/meteor-r.xpm	2013-08-18 17:27:46.093326215 -0400
+@@ -0,0 +1,42 @@
++/* XPM */
++static char *meteor_r[] = {
++/* columns rows colors chars-per-pixel */
++"32 32 4 1 ",
++"  c black",
++". c #BF0000",
++"% c red",
++"* c yellow",
++/* pixels */
++"                                ",
++"                                ",
++"                                ",
++"  .                             ",
++"   ..                           ",
++"   ...                          ",
++"    ....                        ",
++"     .%..                       ",
++"     .....                      ",
++"      ..%...                    ",
++"       ......                   ",
++"        ..%...                  ",
++"        ...*....                ",
++"         ...%%...               ",
++"          ..%*%...              ",
++"           ..%%%...             ",
++"           ...%*%%..            ",
++"            ...%*%%..           ",
++"             ..%%*%%....        ",
++"              ..%%**......      ",
++"               ..%*%%%%%...     ",
++"                ...%*%%%%..     ",
++"                 ..%%**%%%*.    ",
++"                 ..%%***%%%.    ",
++"                 ..%%%*%%%*.    ",
++"                  ..%%%%%*.     ",
++"                  ...%%%*%.     ",
++"                   ..*%*..      ",
++"                     ...        ",
++"                                ",
++"                                ",
++"                                "
++};
