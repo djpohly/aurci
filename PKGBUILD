@@ -9,8 +9,7 @@ arch=('i686' 'x86_64')
 url="http://www.jwz.org/xscreensaver/"
 license=('BSD')
 depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww')
-makedepends=('bc' 'intltool' 'libxpm' 'gdm')
-optdepends=('gdm: for login manager support')
+makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
         xscreensaver-add-electricsheep.diff LICENSE)
@@ -27,7 +26,7 @@ build() {
   cd ${pkgname}-${pkgver}
   ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
     --libexecdir=/usr/lib --with-x-app-defaults=/usr/share/X11/app-defaults \
-    --with-pam --with-login-manager --with-gtk --with-gl \
+    --with-pam --without-login-manager --with-gtk --with-gl \
     --without-gle --with-pixbuf --with-jpeg
   make
 }
