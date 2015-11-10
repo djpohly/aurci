@@ -2,8 +2,8 @@
 # Maintainer: Eric Bélanger <eric@archlinux.org>
 
 pkgname=xscreensaver
-pkgver=5.33
-pkgrel=2
+pkgver=5.34
+pkgrel=1
 pkgdesc="Screen saver and locker for the X Window System"
 arch=('i686' 'x86_64')
 url="http://www.jwz.org/xscreensaver/"
@@ -12,22 +12,19 @@ depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww')
 makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
-        no-delay.diff
-	starry.diff
         xscreensaver-add-electricsheep.diff
-	xscreensaver-missingescape.patch
+	no-delay.diff
+	starry.diff
 	LICENSE)
-sha1sums=('99f69ff0bef5e13ab0c84dcb1312605db485bafd'
+sha1sums=('a6d9a391981730cedcd51e75c35ffb4101928cc2'
+          'e8dc57b6471fb3867ee099304ac6bf628351cb98'
           'bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
           '75eb105c2e1cfafca8bd7ca2b19477b3d146ba06'
-          'e8dc57b6471fb3867ee099304ac6bf628351cb98'
-          'ab2962f497e0b50a2ffe135baefdc155b0be1413'
           '3eedb8b91b13c29df9b1fe5cbb027e1470b802d2')
 
 prepare() {
   cd ${pkgname}-${pkgver}
   patch -p0 -i "${srcdir}/xscreensaver-add-electricsheep.diff"
-  patch -p1 -i "${srcdir}/xscreensaver-missingescape.patch"
   patch -Np1 -i "${srcdir}/no-delay.diff"
   patch -Np1 -i "${srcdir}/starry.diff"
 }
