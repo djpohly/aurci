@@ -2,7 +2,7 @@
 # Maintainer: Eric Bélanger <eric@archlinux.org>
 
 pkgname=xscreensaver
-pkgver=5.35
+pkgver=5.36
 pkgrel=1
 pkgdesc="Screen saver and locker for the X Window System"
 arch=('i686' 'x86_64')
@@ -16,7 +16,7 @@ source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
 	no-delay.diff
 	starry.diff
 	LICENSE)
-sha1sums=('2918e9db7a6d24189c5bcc401cec2d3adbee644b'
+sha1sums=('0353cbe76cb5e8aa55d0142d8733bf2924772f95'
           'e8dc57b6471fb3867ee099304ac6bf628351cb98'
           'bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
           '75eb105c2e1cfafca8bd7ca2b19477b3d146ba06'
