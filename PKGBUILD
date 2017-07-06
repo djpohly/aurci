@@ -13,14 +13,15 @@ makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
         xscreensaver-add-electricsheep.diff
-	no-delay.diff
-	starry.diff
 	LICENSE)
 sha1sums=('0353cbe76cb5e8aa55d0142d8733bf2924772f95'
           'e8dc57b6471fb3867ee099304ac6bf628351cb98'
-          'bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
-          '75eb105c2e1cfafca8bd7ca2b19477b3d146ba06'
           '3eedb8b91b13c29df9b1fe5cbb027e1470b802d2')
+
+source+=(no-delay.diff
+         starry.diff)
+sha1sums+=('bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
+           '75eb105c2e1cfafca8bd7ca2b19477b3d146ba06')
 
 prepare() {
   cd ${pkgname}-${pkgver}
