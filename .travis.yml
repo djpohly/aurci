@@ -24,6 +24,9 @@ before_deploy:
   - docker cp pkgbuild:/home/pkguser/src/repo $TRAVIS_TAG
 deploy:
   provider: releases
+  edge:
+    source: djpohly/dpl
+    branch: asset-overwrite-fix
   api_key: $GITHUB_TOKEN
   file_glob: true
   file: ${TRAVIS_TAG}/*.{db,files,gz,xz,sig}
