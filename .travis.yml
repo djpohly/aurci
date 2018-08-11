@@ -7,6 +7,7 @@ services:
 before_install:
   - git fetch --depth=1 origin refs/heads/master:refs/heads/master
   - git worktree add master master
+  - openssl aes-256-cbc -K $encrypted_7dd107a11548_key -iv $encrypted_7dd107a11548_iv -in master/signing.key.enc -out master/signing.key -d
   - docker build
       -f master/Dockerfile
       -t djpohly/pkgbuild
@@ -25,7 +26,7 @@ deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
   file_glob: true
-  file: ${TRAVIS_TAG}/*{db,files,gz,xz}
+  file: ${TRAVIS_TAG}/*.{db,files,gz,xz,sig}
   overwrite: true
   skip_cleanup: true
   on:
