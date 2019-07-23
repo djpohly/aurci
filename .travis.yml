@@ -1,12 +1,14 @@
 language: generic
+dist: xenial
 branches:
   except:
     - pkgbase
 services:
   - docker
 before_install:
-  - git fetch --depth=1 origin refs/heads/master:refs/heads/master
-  - git worktree add master master
+  - git remote set-branches --add origin master
+  - git fetch --depth=1
+  - git worktree add -b master master origin/master
   - openssl aes-256-cbc -K $encrypted_7dd107a11548_key -iv $encrypted_7dd107a11548_iv -in master/signing.key.enc -out master/signing.key -d
   - docker build
       -f master/Dockerfile
@@ -24,13 +26,9 @@ before_deploy:
   - docker cp pkgbuild:/home/pkguser/src/repo $TRAVIS_TAG
 deploy:
   provider: releases
-  edge:
-    source: djpohly/dpl
-    branch: asset-overwrite-fix
   api_key: $GITHUB_TOKEN
   file_glob: true
-  file: ${TRAVIS_TAG}/*.{db,files,gz,xz,sig}
-  overwrite: true
+  file: ${TRAVIS_TAG}/*.pkg.*
   skip_cleanup: true
   on:
     all_branches: true
