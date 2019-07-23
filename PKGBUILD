@@ -1,43 +1,45 @@
-# $Id$
-# Maintainer: Eric Bélanger <eric@archlinux.org>
+# Maintainer: Levente Polyak <anthraxx[at]archlinux[dot]org>
+# Contributor: Eric Bélanger <eric@archlinux.org>
 
 pkgname=xscreensaver
-pkgver=5.39
+pkgver=5.43
 pkgrel=1
-pkgdesc="Screen saver and locker for the X Window System"
+pkgdesc='Screen saver and locker for the X Window System'
+url='https://www.jwz.org/xscreensaver/'
 arch=('x86_64')
-url="http://www.jwz.org/xscreensaver/"
 license=('BSD')
 depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww')
 makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
-source=(http://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
-	LICENSE)
-sha1sums=('7166c9f4a860785e0829df046f0328f5be74c0d7'
-          '3eedb8b91b13c29df9b1fe5cbb027e1470b802d2')
-
-source+=(no-delay.diff
-         starry.diff
-	 flasher.png meteor_l.png meteor_r.png)
-sha1sums+=('bd032f4592a7df20c1ffeb8dfafa8be5a99a1725'
-           '502882128c0244f1108b558d074dd9187f8d8f8f'
-           '2e1e43f599125dd554d068a011e98226bbe4963b'
-           'c670620b5201c1e04804b4cbef74068dbf61f9fc'
-           '5826224ef9d1285a67185673df296e81f7a3545a')
+source=(https://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
+        LICENSE)
+sha512sums=('7ccaf30fb05ae2110f742f1a5c99f83cd4c8e6749124066b5a418cf3e0ba1b8ff09858eeec29c11b0c8ea428b95b2916481c50cee6a5d952ec941b3ad1b6adcd'
+            '863c699479b2ec2775a0d1cba22e615929194a14af164b3513e46a0c04229da6547255a4da8f7f1bbb40906898c124ed3c9ec2436b76b62affcb62385af9783e')
 
 prepare() {
   cd ${pkgname}-${pkgver}
-  patch -Np1 -i "${srcdir}/no-delay.diff"
-  patch -Np1 -i "${srcdir}/starry.diff"
+  sed 's|-std=c89||' -i configure.in
+  patch -Np1 -i "$srcdir/no-delay.diff"
+  patch -Np1 -i "$srcdir/starry.diff"
   cp ../{flasher,meteor_l,meteor_r}.png hacks/images/
+  autoreconf -fiv
 }
 
 build() {
   cd ${pkgname}-${pkgver}
-  ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-    --libexecdir=/usr/lib --with-x-app-defaults=/usr/share/X11/app-defaults \
-    --with-pam --without-login-manager --with-gtk --with-gl \
-    --without-gle --with-pixbuf --with-jpeg
+  ./configure \
+    --prefix=/usr \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    --libexecdir=/usr/lib \
+    --with-x-app-defaults=/usr/share/X11/app-defaults \
+    --with-pam \
+    --without-login-manager \
+    --with-gtk \
+    --with-gl \
+    --without-gle \
+    --with-pixbuf \
+    --with-jpeg
   make
 }
 
@@ -49,3 +51,12 @@ package() {
   chmod 755 "${pkgdir}/usr/bin/xscreensaver"
   echo "NotShowIn=KDE;GNOME;" >> "${pkgdir}/usr/share/applications/xscreensaver-properties.desktop"
 }
+
+source+=(no-delay.diff
+         starry.diff
+         flasher.png meteor_l.png meteor_r.png)
+sha512sums+=('1f32ea38696e061c03849bf95c8c9dcf879d0324af92212f4462b238d0896eec19209f28e83c890b6b4c70a9b0b14cda362be17795737c8b9d7189d2887210fd'
+             '95025c8d2661dfdf9ba489977f81fb0d313868e38f71425477d97c3ea5ee2b4f81279ed8e86bcc042bcafb48811dd16ecd9dc07e383e01746648aa4e37c2e958'
+             'db77727c27416dfa601e5e9a12b3e02575fe55e3891517121861713341b2e9d575265335ba302264490678b8ca433c8e10dd699c02350d1dbcbffaaf0205481d'
+             'da7cbc0d72fc95ba35929b9a73a45d0a56862ef683fc0f069a8968d4cd73595fc693917265bc93558e35a73fb8ef5f808e84797b50c46429b5d4e30a856573bc'
+             '55689096d3e6a41484f548300c54e6e1dc9dc755e3ef0a21294a195393cd84a86ceb055593fe6e5d0ea6dc15d79297e2749a7cd5a7b7d411a7714a3efe6b6578')
