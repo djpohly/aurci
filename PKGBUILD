@@ -2,7 +2,7 @@
 # Contributor: Eric Bélanger <eric@archlinux.org>
 
 pkgname=xscreensaver
-pkgver=5.43
+pkgver=5.44
 pkgrel=1
 pkgdesc='Screen saver and locker for the X Window System'
 url='https://www.jwz.org/xscreensaver/'
@@ -13,7 +13,7 @@ makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(https://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
         LICENSE)
-sha512sums=('7ccaf30fb05ae2110f742f1a5c99f83cd4c8e6749124066b5a418cf3e0ba1b8ff09858eeec29c11b0c8ea428b95b2916481c50cee6a5d952ec941b3ad1b6adcd'
+sha512sums=('9d9144dec6f075c2d6a1c3cd45123a98d6d0cd732d6c3e3389e97b3f802b8f8765a188d1e35f97f123ca0a64661ea616b7b710577063c311da3d99d8439f1dae'
             '863c699479b2ec2775a0d1cba22e615929194a14af164b3513e46a0c04229da6547255a4da8f7f1bbb40906898c124ed3c9ec2436b76b62affcb62385af9783e')
 
 prepare() {
@@ -49,7 +49,6 @@ package() {
   make install_prefix="${pkgdir}" install
   install -D -m644 ../LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   chmod 755 "${pkgdir}/usr/bin/xscreensaver"
-  echo "NotShowIn=KDE;GNOME;" >> "${pkgdir}/usr/share/applications/xscreensaver-properties.desktop"
 }
 
 source+=(no-delay.diff
