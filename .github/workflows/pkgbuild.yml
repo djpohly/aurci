@@ -1,0 +1,31 @@
+name: Build package
+
+env:
+  KEY_FILE: signing.key.enc
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - main
+      - pkgbase
+  # Allow manual trigger as well
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  pkgbuild:
+    name: Build package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/checkout@v2
+        with:
+          ref: master
+          path: master
+
+      - uses: ./master/.github/actions/docker-pkgbuild
