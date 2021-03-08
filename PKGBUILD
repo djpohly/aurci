@@ -8,11 +8,10 @@ pkgdesc='Screen saver and locker for the X Window System'
 url='https://www.jwz.org/xscreensaver/'
 arch=('x86_64')
 license=('BSD')
-depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww' 'libsystemd.so'
+depends=('libglade' 'libxmu' 'glu' 'xorg-appres' 'perl-libwww'
          'libxcrypt' 'libcrypt.so' 'libxi' 'libxxf86vm' 'libxrandr' 'libxinerama'
          'libxt' 'libx11' 'libxext' 'pam' 'glibc' 'gdk-pixbuf-xlib')
-makedepends=('bc' 'intltool' 'libxpm' 'gdm' 'systemd' 'systemd-libs')
-optdepends=('gdm: for login manager support')
+makedepends=('bc' 'intltool' 'libxpm')
 backup=('etc/pam.d/xscreensaver')
 source=(https://www.jwz.org/xscreensaver/${pkgname}-${pkgver}.tar.gz
         LICENSE)
@@ -24,6 +23,9 @@ b2sums=('102025aa2f57672ed3547f0e9bab989566fb8e50ecae8b9e4078ec5ee5de3cad09fec10
 prepare() {
   cd ${pkgname}-${pkgver}
   sed 's|-std=c89||' -i configure.in
+  patch -Np1 -i "$srcdir/no-delay.diff"
+  patch -Np1 -i "$srcdir/starry.diff"
+  cp ../{flasher,meteor_l,meteor_r}.png hacks/images/
   autoreconf -fiv
 }
 
@@ -36,13 +38,14 @@ build() {
     --libexecdir=/usr/lib \
     --with-x-app-defaults=/usr/share/X11/app-defaults \
     --with-pam \
-    --with-login-manager \
+    --without-login-manager \
+    --without-systemd \
     --with-gtk \
     --with-gl \
     --without-gle \
     --with-pixbuf \
     --with-jpeg
-  make
+  make all
 }
 
 package() {
@@ -52,7 +55,20 @@ package() {
   install -Dm 644 ../LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}"
   # remove sticky bit
   chmod 755 "${pkgdir}/usr/bin/xscreensaver"
-  echo "NotShowIn=KDE;GNOME;" >> "${pkgdir}/usr/share/applications/xscreensaver-properties.desktop"
 }
+
+source+=(no-delay.diff
+         starry.diff
+         flasher.png meteor_l.png meteor_r.png)
+sha512sums+=('1f32ea38696e061c03849bf95c8c9dcf879d0324af92212f4462b238d0896eec19209f28e83c890b6b4c70a9b0b14cda362be17795737c8b9d7189d2887210fd'
+             '95025c8d2661dfdf9ba489977f81fb0d313868e38f71425477d97c3ea5ee2b4f81279ed8e86bcc042bcafb48811dd16ecd9dc07e383e01746648aa4e37c2e958'
+             'db77727c27416dfa601e5e9a12b3e02575fe55e3891517121861713341b2e9d575265335ba302264490678b8ca433c8e10dd699c02350d1dbcbffaaf0205481d'
+             'da7cbc0d72fc95ba35929b9a73a45d0a56862ef683fc0f069a8968d4cd73595fc693917265bc93558e35a73fb8ef5f808e84797b50c46429b5d4e30a856573bc'
+             '55689096d3e6a41484f548300c54e6e1dc9dc755e3ef0a21294a195393cd84a86ceb055593fe6e5d0ea6dc15d79297e2749a7cd5a7b7d411a7714a3efe6b6578')
+b2sums+=('c8c95fd90c907f13bbb79f145899b9a366bb4b854db9bcc48246fa7d96f944e4888a2627bfa2e4e2792f2da00f96b508ab8cd7f94e8320d2352103b68407c6af'
+         'b7fa8bb7f518df2756def90ca4fa782521cc8e199f0fc1e90fc128b02fa3fc28122614b2618b14eb98108c5a63f30edbf7f46e34234d1986a1979cb44c246392'
+         '3c72ef884fb657963c150a666c753b335cacc10f423bb0e385cd1b1f015abbafe09540eaf47907ff178866f46f0558a35f9d6b97ac39157bf0ae5665f14a8399'
+         'ea6b522193fd56e8b2792fc14de9190869a4a41dfc48b7d7c47d3cef17c0326472d4093e78406567610ad058fcb5d443245b64473589874b2925caa3d946f139'
+         '9504e9cabd2a575d320121c8d6868a7a5e009303f2d18d0fe284314bb425a6fb213aaf1b59ad802f2f3d6272823a4f76edfecac1fde93a0d005fb18141fc8776')
 
 # vim: ts=2 sw=2 et:
