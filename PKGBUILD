@@ -22,11 +22,9 @@ b2sums=('102025aa2f57672ed3547f0e9bab989566fb8e50ecae8b9e4078ec5ee5de3cad09fec10
 
 prepare() {
   cd ${pkgname}-${pkgver}
-  sed 's|-std=c89||' -i configure.in
   patch -Np1 -i "$srcdir/no-delay.diff"
   patch -Np1 -i "$srcdir/starry.diff"
   cp ../{flasher,meteor_l,meteor_r}.png hacks/images/
-  autoreconf -fiv
 }
 
 build() {
@@ -45,7 +43,7 @@ build() {
     --without-gle \
     --with-pixbuf \
     --with-jpeg
-  make all
+  make
 }
 
 package() {
