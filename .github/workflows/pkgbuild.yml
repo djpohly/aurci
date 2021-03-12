@@ -1,8 +1,5 @@
 name: Build package
 
-env:
-  KEY_FILE: signing.key.enc
-
 on:
   push:
     branches-ignore:
@@ -27,5 +24,12 @@ jobs:
         with:
           ref: master
           path: master
+
+      - uses: ./master/.github/actions/aes256-decrypt
+        with:
+          infile: ./master/signing.key.enc
+          outfile: ./master/signing.key
+          key: ${{secrets.ENCRYPTION_KEY}}
+          iv: ${{secrets.ENCRYPTION_IV}}
 
       - uses: ./master/.github/actions/docker-pkgbuild
