@@ -38,6 +38,10 @@ jobs:
           iv: ${{secrets.ENCRYPTION_IV}}
 
       - uses: ./master/.github/actions/docker-pkgbuild
+        with:
+          reposlug: ${{github.repository}}
+          release: ${{env.RELEASE_NAME}}
+          runid: ${{github.run_id}}
 
       - uses: svenstaro/upload-release-action@v2
         with:
@@ -48,3 +52,10 @@ jobs:
           overwrite: true
 
       - uses: ./master/.github/actions/commitpkg
+        with:
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+
+      - uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{secrets.PUSH_TOKEN}}
+          event-type: rebuild
