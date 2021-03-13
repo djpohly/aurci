@@ -1,5 +1,10 @@
 name: Build package
 
+env:
+  REPO_NAME: PKGBUILD
+  RELEASE_NAME: repository
+  KEY_FILE: signing.key.enc
+
 on:
   push:
     branches-ignore:
@@ -33,3 +38,13 @@ jobs:
           iv: ${{secrets.ENCRYPTION_IV}}
 
       - uses: ./master/.github/actions/docker-pkgbuild
+
+      - uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+          tag: ${{env.RELEASE_NAME}}
+          file: 'repo/*'
+          file_glob: true
+          overwrite: true
+
+      - uses: ./master/.github/actions/commitpkg
